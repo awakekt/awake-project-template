@@ -37,9 +37,13 @@ Shared game setup and rendering live in
 [`app/shared/src/commonMain/kotlin/com/awake/template/Game.kt`](app/shared/src/commonMain/kotlin/com/awake/template/Game.kt).
 Platform modules only provide the native Awake host.
 
-Change the `awake` version in [`gradle/libs.versions.toml`](gradle/libs.versions.toml). A fresh
-clone resolves published Awake artifacts. For local engine development, keep the Awake checkout
-next to this repository as `../awaken`; Gradle will substitute the local modules automatically.
+The version catalog has separate `awake` (Core) and `awake-vulkan` pins in
+[`gradle/libs.versions.toml`](gradle/libs.versions.toml). Core modules such as the engine bootstrap,
+shader assets, and WebGPU backend use the Core version; the Vulkan backend uses the Vulkan family
+version. For development snapshots, Gradle resolves from Maven Central's snapshot repository. For
+consumer-facing builds, set both pins to published non-snapshot releases. For local engine
+development, keep the Awake checkout next to this repository as `../awaken`; Gradle will substitute
+the local modules automatically.
 
 Change `com.awake.template` to your package, then customize `Game.kt` and add only the Awake
 modules your application needs.

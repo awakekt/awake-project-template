@@ -17,6 +17,7 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositories {
+        maven("https://central.sonatype.com/repository/maven-snapshots/")
         google {
             mavenContent {
                 includeGroupAndSubgroups("androidx")

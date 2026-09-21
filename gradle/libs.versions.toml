@@ -17,7 +17,9 @@ kotlinx-coroutines = "1.11.0"
 ktor = "3.5.2"
 logback = "1.6.3"
 material3 = "1.11.0-alpha07"
-awake = "0.1.0-dev.11-SNAPSHOT"
+# Core modules and Vulkan backend use independent version trains.
+awake = "0.1.0-alpha.4-SNAPSHOT"
+awake-vulkan = "0.1.0-SNAPSHOT"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -45,7 +47,7 @@ ktor-serverTestHost = { module = "io.ktor:ktor-server-test-host-jvm", version.re
 wrappers-browser = { module = "org.jetbrains.kotlin-wrappers:kotlin-browser", version.ref = "kotlin-wrappers" }
 awake-engine-bootstrap = { module = "com.awakekt.awake.engine:bootstrap", version.ref = "awake" }
 awake-asset-shaders = { module = "com.awakekt.awake.asset:shaders", version.ref = "awake" }
-awake-backend-vulkan = { module = "com.awakekt.awake.backend:vulkan", version.ref = "awake" }
+awake-backend-vulkan = { module = "com.awakekt.awake.backend:vulkan", version.ref = "awake-vulkan" }
 awake-backend-webgpu = { module = "com.awakekt.awake.backend:webgpu", version.ref = "awake" }
 
 [plugins]
