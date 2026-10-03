@@ -18,11 +18,11 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "com.awake.template.MainKt"
+        mainClass = "com.awakekt.awake.template.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.awake.template"
+            packageName = "com.awakekt.awake.template"
             packageVersion = "1.0.0"
         }
     }

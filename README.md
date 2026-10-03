@@ -1,7 +1,7 @@
 # Awake Template
 
 A minimal Kotlin Multiplatform game starter powered by
-[Awake Engine](https://github.com/awake-lab/awake).
+[Awake Engine](https://github.com/awakekt/awake).
 
 Targets included:
 
@@ -34,7 +34,7 @@ Open `app/iosApp/iosApp.xcodeproj` in Xcode to run the iOS app.
 ## Where To Start
 
 Shared game setup and rendering live in
-[`app/shared/src/commonMain/kotlin/com/awake/template/Game.kt`](app/shared/src/commonMain/kotlin/com/awake/template/Game.kt).
+[`app/shared/src/commonMain/kotlin/com/awakekt/awake/template/Game.kt`](app/shared/src/commonMain/kotlin/com/awakekt/awake/template/Game.kt).
 Platform modules only provide the native Awake host.
 
 The version catalog has separate `awake` (Core) and `awake-vulkan` pins in
@@ -45,7 +45,7 @@ consumer-facing builds, set both pins to published non-snapshot releases. For lo
 development, keep the Awake checkout next to this repository as `../awaken`; Gradle will substitute
 the local modules automatically.
 
-Change `com.awake.template` to your package, then customize `Game.kt` and add only the Awake
+Change `com.awakekt.awake.template` to your package, then customize `Game.kt` and add only the Awake
 modules your application needs.
 
 ## Project Layout

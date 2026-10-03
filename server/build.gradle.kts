@@ -3,10 +3,10 @@ plugins {
     alias(libs.plugins.ktor)
 }
 
-group = "com.awake.template"
+group = "com.awakekt.awake.template"
 version = "1.0.0"
 application {
-    mainClass = "com.awake.template.ApplicationKt"
+    mainClass = "com.awakekt.awake.template.ApplicationKt"
 }
 
 dependencies {

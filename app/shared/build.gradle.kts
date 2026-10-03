@@ -27,7 +27,7 @@ kotlin {
     }
     
     android {
-       namespace = "com.awake.template.shared"
+       namespace = "com.awakekt.awake.template.shared"
        compileSdk = libs.versions.android.compileSdk.get().toInt()
        minSdk = libs.versions.android.minSdk.get().toInt()
     

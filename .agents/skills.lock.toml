@@ -1,0 +1,22 @@
+# Immutable agent-skill sources for this project. Deploy with the awake-agent-skills installer;
+# none of these files are required to build or run the game.
+version = 1
+
+[[source]]
+id = "awake-game"
+kind = "maintained-core"
+source = "https://github.com/awakekt/awake-game-agent-skills.git"
+tag = "v0.1.0"
+commit = "5ceb9db03c02fedfaa38d5db93f005098672f04f"
+archive_sha256 = "05c88d993c47a9fda287ddd4487205fa0a1dc814a91eb60cc16d4747851131aa"
+license = "Apache-2.0"
+skill_root = "skills"
+skills_target = ".agents/skills"
+skills = [
+  "awake-app-composition", "awake-compose-authoring", "awake-core-math", "awake-ecs-authoring",
+  "awake-ecs-scene-runtime", "awake-editor-plugin-authoring", "awake-fbx-asset-cooking",
+  "awake-render-debug-views", "awake-shadcn-recipe-consuming", "awake-state-management",
+  "awake-terrain-authoring", "awake-ui-design-audit", "awake-ui-layout-guidance",
+  "awake-web-to-compose",
+]
+

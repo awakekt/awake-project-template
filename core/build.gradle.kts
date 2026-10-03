@@ -22,7 +22,7 @@ kotlin {
     }
     
     android {
-       namespace = "com.awake.template.core"
+       namespace = "com.awakekt.awake.template.core"
        compileSdk = libs.versions.android.compileSdk.get().toInt()
        minSdk = libs.versions.android.minSdk.get().toInt()
     
