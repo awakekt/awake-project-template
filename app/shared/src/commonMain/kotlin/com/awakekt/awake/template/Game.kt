@@ -13,7 +13,7 @@ import com.awakekt.awake.project.runtime.playProject
 import com.awakekt.awake.scene.authoring.scene
 
 /** The window title. */
-const val GAME_TITLE = "Awake Template"
+const val GAME_TITLE = "Awake Project"
 
 /**
  * The Awake project this app plays: everything under `project/` in the shared module's resources.
