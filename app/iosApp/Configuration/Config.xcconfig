@@ -1,6 +1,6 @@
 TEAM_ID=
 
-PRODUCT_NAME=AwakeTemplate
+PRODUCT_NAME=AwakeProject
 PRODUCT_BUNDLE_IDENTIFIER=com.awakekt.awake.template$(TEAM_ID)
 
 CURRENT_PROJECT_VERSION=1

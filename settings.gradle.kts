@@ -1,4 +1,4 @@
-rootProject.name = "AwakeTemplate"
+rootProject.name = "AwakeProject"
 
 pluginManagement {
     repositories {
@@ -27,36 +27,6 @@ dependencyResolutionManagement {
         }
         mavenCentral()
         mavenLocal()
-    }
-}
-
-// Optional local development substitution. A published Awake release remains the default for
-// anyone cloning this template, while a sibling Awake checkout can validate the template before
-// the next engine snapshot is available from Maven.
-if (file("../awaken").isDirectory) {
-    includeBuild("../awaken") {
-        dependencySubstitution {
-            substitute(module("com.awakekt.awake.engine:bootstrap"))
-                .using(project(":awake:engine:bootstrap"))
-            substitute(module("com.awakekt.awake.asset:shaders"))
-                .using(project(":awake:asset:shaders"))
-            substitute(module("com.awakekt.awake.asset:shader-pack"))
-                .using(project(":awake:asset:shader-pack"))
-            substitute(module("com.awakekt.awake.core:host"))
-                .using(project(":awake:core:host"))
-            substitute(module("com.awakekt.awake.engine:window"))
-                .using(project(":awake:engine:window"))
-            substitute(module("com.awakekt.awake.scene:authoring"))
-                .using(project(":awake:scene:authoring"))
-            substitute(module("com.awakekt.awake.project:runtime"))
-                .using(project(":awake:project:runtime"))
-            substitute(module("com.awakekt.awake.backend:jolt"))
-                .using(project(":awake:backend:jolt"))
-            substitute(module("com.awakekt.awake.backend:vulkan"))
-                .using(project(":awake:backend:vulkan"))
-            substitute(module("com.awakekt.awake.backend:webgpu"))
-                .using(project(":awake:backend:webgpu"))
-        }
     }
 }
 
