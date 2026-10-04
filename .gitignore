@@ -40,11 +40,3 @@ node_modules/
 
 # Preserved only for the official KMP wizard provenance checkout.
 .kmp-wizard-git/
-
-# Deployed agent skills; only the lockfile is tracked (see AGENTS.md).
-.agents/vendor/
-.agents/skills/
-.agents/commands/
-.agents/agents/
-.claude/*
-!.claude/settings.json
