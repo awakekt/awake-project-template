@@ -1,34 +1,39 @@
 package com.awakekt.awake.template
 
-import com.awakekt.awake.asset.shaders.RenderPlan
-import com.awakekt.awake.asset.shaders.ScenePipeline
-import com.awakekt.awake.asset.shaders.shaderSet
-import com.awakekt.awake.core.geometry.VertexFormat
+import com.awakekt.awake.core.host.readResourceBytes
+import com.awakekt.awake.core.io.AssetSource
 import com.awakekt.awake.engine.bootstrap.dsl.app
-import com.awakekt.awake.engine.platform.dsl.AppWindowBackend
 import com.awakekt.awake.engine.bootstrap.dsl.select
+import com.awakekt.awake.engine.platform.dsl.AppWindowBackend
 import com.awakekt.awake.engine.platform.lifecycle.AwakeAppLifecycle
-import com.awakekt.awake.render.pipeline.PipelineKey
+import com.awakekt.awake.physics.jolt.createJoltPhysicsWorld
+import com.awakekt.awake.project.runtime.PlayableProject
+import com.awakekt.awake.project.runtime.loadPlayableProject
+import com.awakekt.awake.project.runtime.playProject
+import com.awakekt.awake.scene.authoring.scene
 
-/** Creates a fresh application lifecycle for a platform host. */
-fun createGame(windowBackend: AppWindowBackend = AppWindowBackend.VULKAN): AwakeAppLifecycle = app {
+/** The window title. */
+const val GAME_TITLE = "Awake Template"
+
+/**
+ * The Awake project this app plays: everything under `project/` in the shared module's resources.
+ * Replace that folder with a project from Awake Studio to play it instead of the sample.
+ */
+val BundledProject = AssetSource { path -> runCatching { readResourceBytes("project/${path.value}") } }
+
+/** Reads the bundled project and its entry scene. */
+suspend fun loadGame(): PlayableProject = loadPlayableProject(BundledProject, physicsWorld = ::createJoltPhysicsWorld)
+
+/** Creates a fresh application lifecycle that plays [project]; [touchControls] shows its on-screen controls. */
+fun createGame(
+    project: PlayableProject,
+    windowBackend: AppWindowBackend = AppWindowBackend.VULKAN,
+    touchControls: Boolean = false,
+): AwakeAppLifecycle = app {
     window {
-        title = "Awake Template"
+        title = GAME_TITLE
         size(1280, 720)
         backend.select(windowBackend)
     }
-
-    render { frame ->
-        // Add simulation and gameplay updates here.
-        frame.delta
-    }
+    scene("game") { playProject(project, touchControls) }
 }
-
-/** Shared pipeline declaration consumed by Vulkan and WebGPU. */
-val AwakeRenderPlan = RenderPlan(
-    primary = ScenePipeline(
-        key = PipelineKey.Primary,
-        shaders = shaderSet("triangle", emptyMap()),
-        vertexFormat = VertexFormat.PositionColor,
-    ),
-)

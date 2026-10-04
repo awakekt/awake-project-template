@@ -18,8 +18,8 @@ ktor = "3.5.2"
 logback = "1.6.3"
 material3 = "1.11.0-alpha07"
 # Core modules and Vulkan backend use independent version trains.
-awake = "0.1.0-alpha.4-SNAPSHOT"
-awake-vulkan = "0.1.0-SNAPSHOT"
+awake = "0.1.0-rc.12"
+awake-vulkan = "0.1.15"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -48,6 +48,11 @@ wrappers-browser = { module = "org.jetbrains.kotlin-wrappers:kotlin-browser", ve
 awake-engine-bootstrap = { module = "com.awakekt.awake.engine:bootstrap", version.ref = "awake" }
 awake-engine-window = { module = "com.awakekt.awake.engine:window", version.ref = "awake" }
 awake-asset-shaders = { module = "com.awakekt.awake.asset:shaders", version.ref = "awake" }
+awake-asset-shader-pack = { module = "com.awakekt.awake.asset:shader-pack", version.ref = "awake" }
+awake-core-host = { module = "com.awakekt.awake.core:host", version.ref = "awake" }
+awake-scene-authoring = { module = "com.awakekt.awake.scene:authoring", version.ref = "awake" }
+awake-project-runtime = { module = "com.awakekt.awake.project:runtime", version.ref = "awake" }
+awake-backend-jolt = { module = "com.awakekt.awake.backend:jolt", version.ref = "awake" }
 awake-backend-vulkan = { module = "com.awakekt.awake.backend:vulkan", version.ref = "awake-vulkan" }
 awake-backend-webgpu = { module = "com.awakekt.awake.backend:webgpu", version.ref = "awake" }
 
