@@ -13,6 +13,7 @@ kotlin {
 dependencies {
     implementation(project(":app:shared"))
     implementation(libs.awake.backend.vulkan)
+    implementation(libs.awake.engine.window)
 
     implementation(libs.androidx.activity.compose)
 

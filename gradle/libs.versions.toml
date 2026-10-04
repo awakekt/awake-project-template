@@ -46,6 +46,7 @@ ktor-serverNetty = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "kt
 ktor-serverTestHost = { module = "io.ktor:ktor-server-test-host-jvm", version.ref = "ktor" }
 wrappers-browser = { module = "org.jetbrains.kotlin-wrappers:kotlin-browser", version.ref = "kotlin-wrappers" }
 awake-engine-bootstrap = { module = "com.awakekt.awake.engine:bootstrap", version.ref = "awake" }
+awake-engine-window = { module = "com.awakekt.awake.engine:window", version.ref = "awake" }
 awake-asset-shaders = { module = "com.awakekt.awake.asset:shaders", version.ref = "awake" }
 awake-backend-vulkan = { module = "com.awakekt.awake.backend:vulkan", version.ref = "awake-vulkan" }
 awake-backend-webgpu = { module = "com.awakekt.awake.backend:webgpu", version.ref = "awake" }
