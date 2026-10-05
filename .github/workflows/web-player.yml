@@ -1,0 +1,78 @@
+name: Web player release
+
+# Builds this template's web app with an empty project folder, for the Awake Core version Awake
+# Studio uses, and attaches it to the release `player-<core>` as web-player.zip. Studio's
+# "Export Web App" downloads it and puts the user's project in `project/`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      core:
+        description: 'Awake Core version (e.g. 0.1.0-rc.14)'
+        required: true
+      vulkan:
+        description: 'Awake Vulkan version (e.g. 0.1.16)'
+        required: true
+      webgpu:
+        description: 'Awake WebGPU version (e.g. 0.1.0-rc.14-SNAPSHOT)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Pin the Awake versions
+        env:
+          CORE: ${{ inputs.core }}
+          VULKAN: ${{ inputs.vulkan }}
+          WEBGPU: ${{ inputs.webgpu }}
+        run: |
+          catalog=gradle/libs.versions.toml
+          sed -i "s/^awake = \".*\"/awake = \"$CORE\"/; s/^awake-vulkan = \".*\"/awake-vulkan = \"$VULKAN\"/" "$catalog"
+          if grep -q '^awake-webgpu = ' "$catalog"; then
+            sed -i "s/^awake-webgpu = \".*\"/awake-webgpu = \"$WEBGPU\"/" "$catalog"
+          else
+            sed -i "s/^\(awake-vulkan = \".*\"\)$/\1\nawake-webgpu = \"$WEBGPU\"/" "$catalog"
+            sed -i 's/^\(awake-backend-webgpu = {.*version.ref = \)"awake"/\1"awake-webgpu"/' "$catalog"
+          fi
+          grep -E '^awake|backend-webgpu' "$catalog"
+
+      # Studio adds the user's project; the player ships without the sample.
+      - name: Build the web player
+        run: |
+          rm -rf app/shared/src/commonMain/resources/project
+          ./gradlew :app:webApp:wasmJsBrowserDistribution --no-configuration-cache
+
+      # Stored, not deflated: Studio's web build reads stored zips only. No source maps.
+      - name: Package
+        run: |
+          cd app/webApp/build/dist/wasmJs/productionExecutable
+          rm -f ./*.map
+          zip -q -0 -X -r "$GITHUB_WORKSPACE/web-player.zip" .
+          ls -la "$GITHUB_WORKSPACE/web-player.zip"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CORE: ${{ inputs.core }}
+        run: |
+          tag="player-$CORE"
+          notes="Web player for Awake Core $CORE (Vulkan ${{ inputs.vulkan }}, WebGPU ${{ inputs.webgpu }}), built from $GITHUB_SHA. Awake Studio's Export Web App downloads it."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" web-player.zip --clobber
+          else
+            gh release create "$tag" web-player.zip --title "Web player for Awake Core $CORE" --notes "$notes"
+          fi
