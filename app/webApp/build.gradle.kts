@@ -22,5 +22,9 @@ kotlin {
         wasmJsMain.dependencies {
             implementation(libs.awake.backend.webgpu)
         }
+        // The browser fetches the project next to index.html, so the web app serves the shared one.
+        wasmJsMain {
+            resources.srcDir(rootProject.file("app/shared/src/commonMain/resources"))
+        }
     }
 }
