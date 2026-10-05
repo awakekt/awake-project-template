@@ -1,27 +1,73 @@
 name: Web player release
 
-# Builds this template's web app with an empty project folder, for the Awake Core version Awake
-# Studio uses, and attaches it to the release `player-<core>` as web-player.zip. Studio's
-# "Export Web App" downloads it and puts the user's project in `project/`.
+# Builds this template's web app with an empty project folder for an Awake Core version and
+# attaches it to the release `player-<core>` as web-player.zip. Awake Studio's "Export Web App"
+# downloads it and puts the user's project in `project/`.
+#
+# Runs daily for the newest Core on Maven Central, building only if that version has no player yet,
+# and on demand for any version. Every run also mirrors all players to this repo's GitHub Pages
+# (player/<core>/web-player.zip): release downloads send no CORS headers, so Studio running in a
+# browser fetches the Pages copy.
 
 on:
+  schedule:
+    - cron: '17 3 * * *'
   workflow_dispatch:
     inputs:
       core:
-        description: 'Awake Core version (e.g. 0.1.0-rc.14)'
-        required: true
+        description: 'Awake Core version (blank: newest on Maven Central)'
+        required: false
       vulkan:
-        description: 'Awake Vulkan version (e.g. 0.1.16)'
-        required: true
+        description: 'Awake Vulkan version (blank: newest on Maven Central)'
+        required: false
       webgpu:
-        description: 'Awake WebGPU version (e.g. 0.1.0-rc.14-SNAPSHOT)'
-        required: true
+        description: 'Awake WebGPU version (blank: <core>-SNAPSHOT)'
+        required: false
+      rebuild:
+        description: 'Rebuild even if the release exists'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: web-player
+  cancel-in-progress: false
 
 jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.v.outputs.core }}
+      vulkan: ${{ steps.v.outputs.vulkan }}
+      webgpu: ${{ steps.v.outputs.webgpu }}
+      build: ${{ steps.v.outputs.build }}
+    steps:
+      - name: Pick the versions
+        id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IN_CORE: ${{ inputs.core }}
+          IN_VULKAN: ${{ inputs.vulkan }}
+          IN_WEBGPU: ${{ inputs.webgpu }}
+          REBUILD: ${{ inputs.rebuild }}
+        run: |
+          central=https://repo1.maven.org/maven2/com/awakekt/awake
+          newest() { curl -fsS "$central/$1/maven-metadata.xml" | sed -n 's:.*<release>\(.*\)</release>.*:\1:p'; }
+          core=${IN_CORE:-$(newest project)}
+          vulkan=${IN_VULKAN:-$(newest backend/vulkan)}
+          webgpu=${IN_WEBGPU:-$core-SNAPSHOT}
+          build=true
+          if gh release view "player-$core" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [[ "$REBUILD" != true ]]; then build=false; fi
+          echo "core=$core vulkan=$vulkan webgpu=$webgpu build=$build"
+          { echo "core=$core"; echo "vulkan=$vulkan"; echo "webgpu=$webgpu"; echo "build=$build"; } >> "$GITHUB_OUTPUT"
+
   build:
+    needs: resolve
+    if: needs.resolve.outputs.build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -36,9 +82,9 @@ jobs:
 
       - name: Pin the Awake versions
         env:
-          CORE: ${{ inputs.core }}
-          VULKAN: ${{ inputs.vulkan }}
-          WEBGPU: ${{ inputs.webgpu }}
+          CORE: ${{ needs.resolve.outputs.core }}
+          VULKAN: ${{ needs.resolve.outputs.vulkan }}
+          WEBGPU: ${{ needs.resolve.outputs.webgpu }}
         run: |
           catalog=gradle/libs.versions.toml
           sed -i "s/^awake = \".*\"/awake = \"$CORE\"/; s/^awake-vulkan = \".*\"/awake-vulkan = \"$VULKAN\"/" "$catalog"
@@ -67,12 +113,47 @@ jobs:
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-          CORE: ${{ inputs.core }}
+          CORE: ${{ needs.resolve.outputs.core }}
+          VULKAN: ${{ needs.resolve.outputs.vulkan }}
+          WEBGPU: ${{ needs.resolve.outputs.webgpu }}
         run: |
           tag="player-$CORE"
-          notes="Web player for Awake Core $CORE (Vulkan ${{ inputs.vulkan }}, WebGPU ${{ inputs.webgpu }}), built from $GITHUB_SHA. Awake Studio's Export Web App downloads it."
+          notes="Web player for Awake Core $CORE (Vulkan $VULKAN, WebGPU $WEBGPU), built from $GITHUB_SHA. Awake Studio's Export Web App downloads it."
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" web-player.zip --clobber
           else
             gh release create "$tag" web-player.zip --title "Web player for Awake Core $CORE" --notes "$notes"
           fi
+
+  pages:
+    needs: [resolve, build]
+    if: always() && needs.resolve.result == 'success' && needs.build.result != 'failure'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Collect every player
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p site/player
+          for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName --jq '.[].tagName' | grep '^player-'); do
+            core=${tag#player-}
+            mkdir -p "site/player/$core"
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern web-player.zip --dir "site/player/$core"
+          done
+          {
+            echo '<!DOCTYPE html><meta charset="utf-8"><title>Awake web players</title>'
+            echo '<p>Web players for Awake Studio'"'"'s Export Web App, one per Awake Core version.</p><ul>'
+            for dir in site/player/*/; do v=$(basename "$dir"); echo "<li><a href=\"player/$v/web-player.zip\">$v</a></li>"; done
+            echo '</ul>'
+          } > site/index.html
+          du -sh site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
