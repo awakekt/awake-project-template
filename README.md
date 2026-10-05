@@ -12,6 +12,7 @@ You need JDK 17 or newer. On macOS, desktop needs Vulkan: `brew install molten-v
 ```bash
 ./gradlew :app:desktopApp:run                # desktop
 ./gradlew :app:androidApp:assembleDebug      # Android APK (needs the Android SDK)
+./gradlew :app:webApp:wasmJsBrowserDistribution   # web: a folder in app/webApp/build/dist to host anywhere
 ```
 
 Or open the folder in Android Studio and run `androidApp`.
@@ -27,7 +28,8 @@ cube. Replace the folder with a project saved from Awake Studio to play yours.
 | `app/shared/.../RenderPlan.kt` | Sets up drawing for everything a Studio project can contain |
 | `gradle/libs.versions.toml` | Pins the Awake Core (`awake`) and Vulkan (`awake-vulkan`) versions |
 
-Web and iOS builds compile, but don't include the project yet.
+The web build needs WebGPU in the browser, and serves the project next to `index.html`. The iOS build
+doesn't include the project yet.
 
 ## License
 
