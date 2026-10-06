@@ -18,8 +18,8 @@ ktor = "3.5.2"
 logback = "1.6.3"
 material3 = "1.11.0-alpha07"
 # Core modules and Vulkan backend use independent version trains.
-awake = "0.1.0-rc.12"
-awake-vulkan = "0.1.15"
+awake = "0.2.0"
+awake-vulkan = "0.1.18"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
