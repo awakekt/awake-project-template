@@ -1,0 +1,1 @@
+- Support the renamed Core 0.3 project runtime APIs while retaining compatibility with the starter's published Core 0.2 dependency, and resolve WebGPU from its published snapshot train.
