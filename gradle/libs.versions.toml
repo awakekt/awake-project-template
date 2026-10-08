@@ -20,6 +20,8 @@ material3 = "1.11.0-alpha07"
 # Core modules and Vulkan backend use independent version trains.
 awake = "0.2.0"
 awake-vulkan = "0.1.18"
+# WebGPU is published only as snapshots, independently of the stable Core pin.
+awake-webgpu = "0.2.1-SNAPSHOT"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -54,7 +56,7 @@ awake-scene-authoring = { module = "com.awakekt.awake.scene:authoring", version.
 awake-project-runtime = { module = "com.awakekt.awake.project:runtime", version.ref = "awake" }
 awake-backend-jolt = { module = "com.awakekt.awake.backend:jolt", version.ref = "awake" }
 awake-backend-vulkan = { module = "com.awakekt.awake.backend:vulkan", version.ref = "awake-vulkan" }
-awake-backend-webgpu = { module = "com.awakekt.awake.backend:webgpu", version.ref = "awake" }
+awake-backend-webgpu = { module = "com.awakekt.awake.backend:webgpu", version.ref = "awake-webgpu" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
