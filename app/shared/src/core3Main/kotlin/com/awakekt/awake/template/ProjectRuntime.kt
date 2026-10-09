@@ -13,7 +13,7 @@ typealias LoadedProject = com.awakekt.awake.project.runtime.LoadedProject
 internal suspend fun loadProject(
     files: AssetSource,
     physicsWorld: suspend () -> PhysicsWorld,
-): LoadedProject = loadCoreProject(files, physicsWorld = physicsWorld)
+): LoadedProject = loadCoreProject(files, capabilities = projectCapabilities, physicsWorld = physicsWorld)
 
 /** Runs the loaded project in this application's scene. */
 internal fun SceneAppDsl.runProject(project: LoadedProject, touchControls: Boolean) {
