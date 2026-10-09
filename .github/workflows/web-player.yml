@@ -21,7 +21,7 @@ on:
         description: 'Awake Vulkan version (blank: newest on Maven Central)'
         required: false
       webgpu:
-        description: 'Awake WebGPU version (blank: <core>-SNAPSHOT)'
+        description: 'Awake WebGPU version (blank: the snapshot after <core>, e.g. 0.5.1-SNAPSHOT for 0.5.0)'
         required: false
       rebuild:
         description: 'Rebuild even if the release exists'
@@ -59,7 +59,9 @@ jobs:
           newest() { curl -fsS "$central/$1/maven-metadata.xml" | sed -n 's:.*<release>\(.*\)</release>.*:\1:p'; }
           core=${IN_CORE:-$(newest project)}
           vulkan=${IN_VULKAN:-$(newest backend/vulkan)}
-          webgpu=${IN_WEBGPU:-$core-SNAPSHOT}
+          # WebGPU isn't released with Core: it publishes as the snapshot after the Core release it builds on.
+          next_patch() { IFS=. read -r major minor patch <<< "${1%%-*}"; echo "$major.$minor.$((patch + 1))"; }
+          webgpu=${IN_WEBGPU:-$(next_patch "$core")-SNAPSHOT}
           build=true
           if gh release view "player-$core" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [[ "$REBUILD" != true ]]; then build=false; fi
           echo "core=$core vulkan=$vulkan webgpu=$webgpu build=$build"

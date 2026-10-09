@@ -1,0 +1,1 @@
+- **Builds on an Awake Core release Maven Central refused.** Core serves its newest two releases from `https://awakekt.github.io/awake/` at Central's coordinates when Central refuses one under its publishing limits. The template now looks there after `mavenCentral()`, for Awake's groups only, so the project, the web player and Studio's exported apps still build on that release.
