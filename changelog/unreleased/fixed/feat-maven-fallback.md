@@ -1,0 +1,1 @@
+- **The web player builds with the WebGPU snapshot that goes with its Core.** Left blank, the "Web player release" workflow used `<core>-SNAPSHOT`, the snapshot from before that Core was released. WebGPU publishes as the snapshot after the release it builds on, so the default is now the next patch's, `0.5.1-SNAPSHOT` for Core `0.5.0`.

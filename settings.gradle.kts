@@ -10,6 +10,9 @@ pluginManagement {
             }
         }
         mavenCentral()
+        // An Awake Core release Maven Central refused under its publishing limits, served by Core at
+        // Central's coordinates.
+        maven("https://awakekt.github.io/awake/") { mavenContent { includeGroupAndSubgroups("com.awakekt.awake") } }
         mavenLocal()
         gradlePluginPortal()
     }
@@ -26,6 +29,9 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        // An Awake Core release Maven Central refused under its publishing limits, served by Core at
+        // Central's coordinates.
+        maven("https://awakekt.github.io/awake/") { mavenContent { includeGroupAndSubgroups("com.awakekt.awake") } }
         mavenLocal()
     }
 }
