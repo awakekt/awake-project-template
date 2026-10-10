@@ -39,7 +39,13 @@ android {
     }
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Shrunk and obfuscated by R8. Awake's libraries bring the rules for what their native
+            // code finds by name; add your own to proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            // Signed with the debug key so the release installs as it is, as CI installs it.
+            // Sign it with your own key before you publish.
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

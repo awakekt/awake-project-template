@@ -36,6 +36,23 @@ published release.
 The web build needs WebGPU in the browser, and serves the project next to `index.html`. The iOS build
 doesn't include the project yet.
 
+## Ship it
+
+Release builds are shrunk and obfuscated, which makes them smaller and harder to take apart: R8 on
+Android, ProGuard on desktop, and an optimized, minified build on the web.
+
+```bash
+./gradlew :app:desktopApp:packageReleaseDistributionForCurrentOS   # desktop installer
+./gradlew :app:androidApp:assembleRelease                          # Android APK
+./gradlew :app:webApp:wasmJsBrowserDistribution                    # web
+```
+
+- **Keep rules:** Awake's libraries bring the rules for what their native code finds by name. If
+  your app finds a class by name, keep it in `app/androidApp/proguard-rules.pro` and
+  `app/desktopApp/proguard-rules.pro`.
+- **Signing:** the Android release is signed with the debug key so that it installs as it is. Sign
+  it with your own key before you publish.
+
 ## License
 
 Apache-2.0. See [LICENSE.md](LICENSE.md).
