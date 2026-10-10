@@ -48,6 +48,9 @@ compose.desktop {
         // the rules every library ships for it and your own in proguard-rules.pro.
         buildTypes.release.proguard {
             obfuscate.set(true)
+            // Compose's default, ProGuard 7.7.0, drops classes from a Kotlin sealed interface's
+            // permitted subclasses, and the release then fails to load them. 7.10.0 keeps them all.
+            version.set("7.10.0")
             configurationFiles.from(project.file("proguard-rules.pro"), files(libraryKeepRules).asFileTree)
         }
     }
