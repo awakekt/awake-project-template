@@ -13,7 +13,8 @@ plugins {
 // The bundled project's manifest names the game's own capabilities: the `plugins` entries with a
 // `capabilityClass`. They are generated into `projectCapabilities`, which loadGame passes to loadProject,
 // so the manifest stays the one list. An entry with an `artifact` (a published capability) adds that
-// library too. A project without any generates an empty list.
+// library too. An Awake add-on's artifact may leave out its version: it takes this build's Core version,
+// so the two can't drift apart. A project without any generates an empty list.
 // Read through `providers`, so the configuration cache notices an edited manifest.
 @Suppress("UNCHECKED_CAST")
 val projectPlugins: List<Map<String, Any?>> =
@@ -124,7 +125,11 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             projectPlugins.mapNotNull { it["artifact"] as? Map<*, *> }.forEach { artifact ->
-                implementation("${artifact["group"]}:${artifact["name"]}:${artifact["version"]}")
+                val group = artifact["group"] as String
+                val version = artifact["version"] as String?
+                    ?: libs.versions.awake.asProvider().get().takeIf { group.startsWith("com.awakekt.awake") }
+                    ?: error("The manifest's artifact $group:${artifact["name"]} names no version")
+                implementation("$group:${artifact["name"]}:$version")
             }
         }
         iosMain.dependencies {
