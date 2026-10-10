@@ -36,6 +36,24 @@ published release.
 The web build needs WebGPU in the browser, and serves the project next to `index.html`. The iOS build
 doesn't include the project yet.
 
+## Your game's code
+
+Gameplay a project can't express as data is Kotlin code in `app/shared`: a `SceneCapability` object that
+registers the game's own scene components and adds the systems that run them. Name it in the project's
+`awake.project.json`, and the app links it:
+
+```json
+"plugins": [{ "id": "com.example.my-game.beacon", "capabilityClass": "com.example.mygame.BeaconCapability", "required": true }]
+```
+
+- The build generates `projectCapabilities` from those entries, and `loadGame` passes it to `loadProject`,
+  so the manifest is the one list. Core refuses a project whose `required` capability isn't linked.
+- An entry that names an `artifact` (`group`, `name`, `version`) is a published capability: the build adds
+  that library as well.
+- `app/shared` applies the Kotlin serialization plugin, which a scene component needs.
+- Awake Studio's desktop editor builds this module and plays the project with the same capabilities, so it
+  plays in Studio as it does here. Leaving out `path`, as above, needs Core 0.6.0 or newer.
+
 ## License
 
 Apache-2.0. See [LICENSE.md](LICENSE.md).
