@@ -18,10 +18,10 @@ ktor = "3.5.2"
 logback = "1.6.3"
 material3 = "1.11.0-alpha07"
 # Core modules and Vulkan backend use independent version trains.
-awake = "0.5.0"
-awake-vulkan = "0.1.19"
+awake = "0.7.1"
+awake-vulkan = "0.1.23"
 # WebGPU is published only as snapshots, independently of the stable Core pin.
-awake-webgpu = "0.5.1-SNAPSHOT"
+awake-webgpu = "0.7.2-SNAPSHOT"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
