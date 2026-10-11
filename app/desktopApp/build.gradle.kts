@@ -1,3 +1,4 @@
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -16,6 +17,21 @@ dependencies {
     implementation(libs.compose.uiToolingPreview)
 }
 
+// Libraries ship their keep rules in META-INF/proguard, where Android's R8 finds them. Compose's
+// ProGuard doesn't look there, so this collects them for it: Awake's keep what its native code finds
+// by name.
+val libraryKeepRules = tasks.register<Sync>("libraryKeepRules") {
+    val libraries = configurations.runtimeClasspath.get().incoming
+        .artifactView { componentFilter { it is ModuleComponentIdentifier } }
+        .files
+    from(libraries.elements.map { jars -> jars.filter { it.asFile.name.endsWith(".jar") }.map { zipTree(it.asFile) } }) {
+        include("META-INF/proguard/*.pro")
+    }
+    into(layout.buildDirectory.dir("library-keep-rules"))
+    eachFile { path = name }
+    includeEmptyDirs = false
+}
+
 compose.desktop {
     application {
         mainClass = "com.awakekt.awake.template.MainKt"
@@ -26,6 +42,16 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "com.awakekt.awake.template"
             packageVersion = "1.0.0"
+        }
+
+        // The release (`runRelease`, `packageRelease…`) is shrunk and obfuscated by ProGuard, with
+        // the rules every library ships for it and your own in proguard-rules.pro.
+        buildTypes.release.proguard {
+            obfuscate.set(true)
+            // Compose's default, ProGuard 7.7.0, drops classes from a Kotlin sealed interface's
+            // permitted subclasses, and the release then fails to load them. 7.10.0 keeps them all.
+            version.set("7.10.0")
+            configurationFiles.from(project.file("proguard-rules.pro"), files(libraryKeepRules).asFileTree)
         }
     }
 }
