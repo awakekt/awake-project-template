@@ -20,8 +20,9 @@ material3 = "1.11.0-alpha07"
 # Core modules and Vulkan backend use independent version trains.
 awake = "0.8.3"
 awake-vulkan = "0.1.25"
-# WebGPU is published only as snapshots. Pin "<awake>-SNAPSHOT", the build Core's tag run publishes
-# for the release above; never the next patch.
+# WebGPU is published only as snapshots. Pin "<awake>-SNAPSHOT": the WebGPU snapshot of the release
+# above (from Core's tag run once it publishes one, otherwise the last main build before the cut);
+# never the next patch.
 awake-webgpu = "0.8.3-SNAPSHOT"
 
 [libraries]

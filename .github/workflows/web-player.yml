@@ -9,8 +9,11 @@ name: Web player release
 # (player/<core>/web-player.zip): release downloads send no CORS headers, so Studio running in a
 # browser fetches the Pages copy.
 #
-# The WebGPU backend is built from the same Core release: a scheduled run whose Core has no matching
-# WebGPU build yet skips the build and tries again the next day, and a manual run fails.
+# The WebGPU backend is the <core>-SNAPSHOT of the same Core release: the build Core's tag run
+# publishes from the release once it publishes one, otherwise the last main build before the cut.
+# A scheduled run whose Core has no such build yet skips the build and tries again the next day. Any
+# other failed check, such as a build that names another Core, fails the run, and so does a manual
+# run that finds no build.
 
 on:
   schedule:
@@ -24,7 +27,7 @@ on:
         description: 'Awake Vulkan version (blank: newest on Maven Central)'
         required: false
       webgpu:
-        description: 'Awake WebGPU version (blank: <core>-SNAPSHOT, the WebGPU build of that Core release)'
+        description: 'Awake WebGPU version (blank: <core>-SNAPSHOT, the WebGPU snapshot of that Core release; never the next patch)'
         required: false
       rebuild:
         description: 'Rebuild even if the release exists'
@@ -68,20 +71,26 @@ jobs:
           newest() { curl -fsS "$central/$1/maven-metadata.xml" | sed -n 's:.*<release>\(.*\)</release>.*:\1:p'; }
           core=${IN_CORE:-$(newest project)}
           vulkan=${IN_VULKAN:-$(newest backend/vulkan)}
-          # WebGPU isn't released to Maven Central. Core's tag run publishes <core>-SNAPSHOT, built from
-          # that release; never the next patch, which is Core main after the release. A Core snapshot
-          # pairs with the same snapshot.
+          # WebGPU isn't released to Maven Central. Pin <core>-SNAPSHOT, the WebGPU snapshot of that
+          # release: from Core's tag run once it publishes one, otherwise the last main build before
+          # the cut. Never the next patch, which is Core main after the release. A Core snapshot pairs
+          # with the same snapshot.
           if [[ "$core" == *-SNAPSHOT ]]; then webgpu=${IN_WEBGPU:-$core}; else webgpu=${IN_WEBGPU:-$core-SNAPSHOT}; fi
           build=true
           if gh release view "player-$core" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [[ "$REBUILD" != true ]]; then build=false; fi
           strict=false
           webgpu_build=
           if [[ "$build" == true ]]; then
-            if pin=$(bash .github/scripts/check-webgpu-pin.sh "$core" "$webgpu"); then
+            # Waiting a day helps only when the build is not published yet (exit 3). A build of
+            # another Core or an unreachable Central fails the run, so a wrong pin is not skipped
+            # quietly every day.
+            check=0
+            pin=$(bash .github/scripts/check-webgpu-pin.sh "$core" "$webgpu") || check=$?
+            if [[ "$check" -eq 0 ]]; then
               strict=$(sed -n 's/^strict=//p' <<< "$pin")
               webgpu_build=$(sed -n 's/^build=//p' <<< "$pin")
-            elif [[ "$GITHUB_EVENT_NAME" == schedule ]]; then
-              echo "::warning::No usable WebGPU $webgpu for Core $core yet; tomorrow's run tries again."
+            elif [[ "$check" -eq 3 && "$GITHUB_EVENT_NAME" == schedule ]]; then
+              echo "::warning::WebGPU $webgpu for Core $core is not published yet; tomorrow's run tries again."
               build=false
             else
               exit 1

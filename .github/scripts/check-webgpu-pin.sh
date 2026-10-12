@@ -8,11 +8,14 @@
 # <core>-SNAPSHOT: a build of a later Core main names a later version and would move part of Core
 # up on the web build only, so it fails. Prints two lines on stdout:
 #
-#   strict=true|false  true for the release pin Core's tag run publishes, which holds every Core
-#                      module at exactly <core> with strictly constraints; false for an older build
-#                      whose Core edges are <core>-SNAPSHOT, which only matches the release if no
-#                      Core change landed after the cut.
+#   strict=true|false  true for a release pin from Core's tag run, once Core publishes one, which
+#                      holds every Core module at exactly <core> with strictly constraints; false
+#                      for a main build from before the cut, whose Core edges are <core>-SNAPSHOT
+#                      and which only matches the release if no Core change landed after it.
 #   build=<timestamp>-<n>  the timestamped build it checked.
+#
+# Exits 3 when <webgpu> has no published build, the one failure a later run can outgrow; 1 for any
+# other failure, including a build of another Core and a Central it could not reach; 2 on bad usage.
 set -euo pipefail
 
 if [[ $# -ne 2 ]]; then
@@ -31,9 +34,13 @@ repo=https://central.sonatype.com/repository/maven-snapshots/com/awakekt/awake/b
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-status=$(curl -sS --retry 3 -o "$work/maven-metadata.xml" -w '%{http_code}' "$repo/maven-metadata.xml")
-if [[ "$status" != 200 ]]; then
-  echo "::error::WebGPU $webgpu has no published build ($repo/maven-metadata.xml returned $status)." >&2
+# curl prints 000 when it gets no response at all.
+status=$(curl -sS --retry 3 -o "$work/maven-metadata.xml" -w '%{http_code}' "$repo/maven-metadata.xml" || true)
+if [[ "$status" == 404 ]]; then
+  echo "::error::WebGPU $webgpu has no published build ($repo/maven-metadata.xml returned 404)." >&2
+  exit 3
+elif [[ "$status" != 200 ]]; then
+  echo "::error::Could not reach Central for WebGPU $webgpu ($repo/maven-metadata.xml: status $status)." >&2
   exit 1
 fi
 
@@ -51,7 +58,11 @@ if [[ -z "$value" ]]; then
 fi
 build=${value#"${webgpu%-SNAPSHOT}-"}
 
-curl -fsS --retry 3 -o "$work/module.json" "$repo/webgpu-wasm-js-$value.module"
+# curl and jq have exit codes of their own, 3 among them, so their failures exit 1 explicitly.
+if ! curl -fsS --retry 3 -o "$work/module.json" "$repo/webgpu-wasm-js-$value.module"; then
+  echo "::error::Could not fetch $repo/webgpu-wasm-js-$value.module." >&2
+  exit 1
+fi
 
 # One line per Awake edge, fields split by |: kind, coordinate, then the strictly, requires and
 # prefers versions. The WebGPU family itself is skipped; it is versioned as the pin, not as Core.
@@ -65,7 +76,10 @@ edges=$(jq -r '
   | select((.group == "com.awakekt.awake.backend" and (.module | startswith("webgpu"))) | not)
   | [.kind, "\(.group):\(.module)", (.version.strictly // ""), (.version.requires // ""), (.version.prefers // "")]
   | join("|")
-' "$work/module.json" | tr -d '\r' | sort -u)
+' "$work/module.json" | tr -d '\r' | sort -u) || {
+  echo "::error::Could not read the Awake edges of webgpu-wasm-js $value." >&2
+  exit 1
+}
 
 if [[ "$core" == *-SNAPSHOT ]]; then
   allowed=("$core")
