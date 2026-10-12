@@ -20,8 +20,9 @@ material3 = "1.11.0-alpha07"
 # Core modules and Vulkan backend use independent version trains.
 awake = "0.8.3"
 awake-vulkan = "0.1.25"
-# WebGPU is published only as snapshots, independently of the stable Core pin.
-awake-webgpu = "0.8.4-SNAPSHOT"
+# WebGPU is published only as snapshots. Pin "<awake>-SNAPSHOT", the build Core's tag run publishes
+# for the release above; never the next patch.
+awake-webgpu = "0.8.3-SNAPSHOT"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }

@@ -8,6 +8,9 @@ name: Web player release
 # and on demand for any version. Every run also mirrors all players to this repo's GitHub Pages
 # (player/<core>/web-player.zip): release downloads send no CORS headers, so Studio running in a
 # browser fetches the Pages copy.
+#
+# The WebGPU backend is built from the same Core release: a scheduled run whose Core has no matching
+# WebGPU build yet skips the build and tries again the next day, and a manual run fails.
 
 on:
   schedule:
@@ -21,7 +24,7 @@ on:
         description: 'Awake Vulkan version (blank: newest on Maven Central)'
         required: false
       webgpu:
-        description: 'Awake WebGPU version (blank: the snapshot after <core>, e.g. 0.5.1-SNAPSHOT for 0.5.0)'
+        description: 'Awake WebGPU version (blank: <core>-SNAPSHOT, the WebGPU build of that Core release)'
         required: false
       rebuild:
         description: 'Rebuild even if the release exists'
@@ -44,8 +47,14 @@ jobs:
       core: ${{ steps.v.outputs.core }}
       vulkan: ${{ steps.v.outputs.vulkan }}
       webgpu: ${{ steps.v.outputs.webgpu }}
+      webgpu_build: ${{ steps.v.outputs.webgpu_build }}
+      strict: ${{ steps.v.outputs.strict }}
       build: ${{ steps.v.outputs.build }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+
       - name: Pick the versions
         id: v
         env:
@@ -59,13 +68,30 @@ jobs:
           newest() { curl -fsS "$central/$1/maven-metadata.xml" | sed -n 's:.*<release>\(.*\)</release>.*:\1:p'; }
           core=${IN_CORE:-$(newest project)}
           vulkan=${IN_VULKAN:-$(newest backend/vulkan)}
-          # WebGPU isn't released with Core: it publishes as the snapshot after the Core release it builds on.
-          next_patch() { IFS=. read -r major minor patch <<< "${1%%-*}"; echo "$major.$minor.$((patch + 1))"; }
-          webgpu=${IN_WEBGPU:-$(next_patch "$core")-SNAPSHOT}
+          # WebGPU isn't released to Maven Central. Core's tag run publishes <core>-SNAPSHOT, built from
+          # that release; never the next patch, which is Core main after the release. A Core snapshot
+          # pairs with the same snapshot.
+          if [[ "$core" == *-SNAPSHOT ]]; then webgpu=${IN_WEBGPU:-$core}; else webgpu=${IN_WEBGPU:-$core-SNAPSHOT}; fi
           build=true
           if gh release view "player-$core" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [[ "$REBUILD" != true ]]; then build=false; fi
-          echo "core=$core vulkan=$vulkan webgpu=$webgpu build=$build"
-          { echo "core=$core"; echo "vulkan=$vulkan"; echo "webgpu=$webgpu"; echo "build=$build"; } >> "$GITHUB_OUTPUT"
+          strict=false
+          webgpu_build=
+          if [[ "$build" == true ]]; then
+            if pin=$(bash .github/scripts/check-webgpu-pin.sh "$core" "$webgpu"); then
+              strict=$(sed -n 's/^strict=//p' <<< "$pin")
+              webgpu_build=$(sed -n 's/^build=//p' <<< "$pin")
+            elif [[ "$GITHUB_EVENT_NAME" == schedule ]]; then
+              echo "::warning::No usable WebGPU $webgpu for Core $core yet; tomorrow's run tries again."
+              build=false
+            else
+              exit 1
+            fi
+          fi
+          echo "core=$core vulkan=$vulkan webgpu=$webgpu webgpu_build=$webgpu_build strict=$strict build=$build"
+          {
+            echo "core=$core"; echo "vulkan=$vulkan"; echo "webgpu=$webgpu"; echo "webgpu_build=$webgpu_build"
+            echo "strict=$strict"; echo "build=$build"
+          } >> "$GITHUB_OUTPUT"
 
   build:
     needs: resolve
@@ -98,7 +124,49 @@ jobs:
           fi
           grep -E '^awake|backend-webgpu' "$catalog"
 
-      # Studio adds the user's project; the player ships without the sample.
+      # Every Awake module the web app runs must be the Core it is built for. A WebGPU build that
+      # predates Core's release pin may still bring its Core edges at <core>-SNAPSHOT.
+      - name: Check the resolved Awake versions
+        env:
+          CORE: ${{ needs.resolve.outputs.core }}
+          STRICT: ${{ needs.resolve.outputs.strict }}
+        run: |
+          ./gradlew -q :app:webApp:dependencies --configuration wasmJsRuntimeClasspath --no-configuration-cache > classpath.txt
+          if grep -E 'com\.awakekt\.awake[^ ]* FAILED' classpath.txt; then
+            echo "::error::Some Awake modules did not resolve."
+            exit 1
+          fi
+          # After the tree prefix, a line reads group:module:requested, then "-> selected" when they differ.
+          selected=$(awk '/com\.awakekt\.awake/ {
+              line = $0; sub(/^[^a-z]*/, "", line)
+              if (line !~ /^com\.awakekt\.awake/) next
+              split(line, c, ":"); coordinate = c[1] ":" c[2]; sub(/ .*/, "", coordinate)
+              if ((i = index(line, " -> ")) > 0) version = substr(line, i + 4); else version = c[3]
+              sub(/ .*/, "", version)
+              print coordinate ":" version
+            }' classpath.txt | grep -vE '^com\.awakekt\.awake\.backend:webgpu' | sort -u)
+          if [[ -z "$selected" ]]; then
+            echo "::error::Found no Awake modules in the web app's runtime classpath."
+            exit 1
+          fi
+          echo "$selected"
+          wrong=$(awk -F: -v core="$CORE" '$3 != core' <<< "$selected")
+          if [[ "$STRICT" != true && "$CORE" != *-SNAPSHOT ]]; then
+            snapshots=$(awk -F: -v core="$CORE" '$3 == core "-SNAPSHOT"' <<< "$wrong")
+            if [[ -n "$snapshots" ]]; then
+              echo "::warning::WebGPU predates Core's release pin, so these resolve at $CORE-SNAPSHOT:"
+              echo "$snapshots"
+            fi
+            wrong=$(awk -F: -v core="$CORE" '$3 != core "-SNAPSHOT"' <<< "$wrong")
+          fi
+          if [[ -n "$wrong" ]]; then
+            echo "::error::The web app resolves Awake modules other than Core $CORE:"
+            echo "$wrong"
+            exit 1
+          fi
+
+      # Studio adds the user's project; the player ships without the sample. The distribution links
+      # the production executable, so the log reports any WebGPU call into Core code missing here.
       - name: Build the web player
         run: |
           rm -rf app/shared/src/commonMain/resources/project
@@ -118,11 +186,14 @@ jobs:
           CORE: ${{ needs.resolve.outputs.core }}
           VULKAN: ${{ needs.resolve.outputs.vulkan }}
           WEBGPU: ${{ needs.resolve.outputs.webgpu }}
+          WEBGPU_BUILD: ${{ needs.resolve.outputs.webgpu_build }}
         run: |
           tag="player-$CORE"
-          notes="Web player for Awake Core $CORE (Vulkan $VULKAN, WebGPU $WEBGPU), built from $GITHUB_SHA. Awake Studio's Export Web App downloads it."
+          notes="Web player for Awake Core $CORE, Vulkan $VULKAN and WebGPU $WEBGPU (build $WEBGPU_BUILD), built from $GITHUB_SHA. Awake Studio's Export Web App downloads it."
+          # A rebuild replaces the zip, so its notes name the builds it now carries.
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" web-player.zip --clobber
+            gh release edit "$tag" --notes "$notes"
           else
             gh release create "$tag" web-player.zip --title "Web player for Awake Core $CORE" --notes "$notes"
           fi
