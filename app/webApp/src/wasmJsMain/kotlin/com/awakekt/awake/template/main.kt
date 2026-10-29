@@ -8,12 +8,10 @@ import kotlinx.coroutines.launch
 
 fun main() {
     MainScope().launch {
-        val project = loadGame()
-        launchWebGpuGame {
-            WebGpuEngine(
-                appLifecycle = createGame(project, AppWindowBackend.WEBGPU),
-                requestedPlan = AwakeRenderPlan,
-            )
+        val game = createGame(loadGame(), AppWindowBackend.WEBGPU)
+        // The canvas shows the pointer shape the UI asks for only when it is handed the request.
+        launchWebGpuGame(cursor = pointerCursorOf(game)) {
+            WebGpuEngine(appLifecycle = game, requestedPlan = AwakeRenderPlan)
         }
     }
 }
