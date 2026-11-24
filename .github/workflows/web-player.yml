@@ -35,6 +35,7 @@ on:
         default: false
 
 permissions:
+  actions: read
   contents: write
   pages: write
   id-token: write
@@ -236,6 +237,20 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
+
+      - name: Wait for Pages artifact index
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 15); do
+            count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=github-pages" --jq '.total_count' 2>/dev/null || echo 0)
+            if [[ "$count" -ge 1 ]]; then
+              echo "Pages artifact indexed ($count) on attempt $i."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::warning::Timed out waiting for artifact index; continuing to deploy-pages."
 
       - id: deploy
         uses: actions/deploy-pages@v4
