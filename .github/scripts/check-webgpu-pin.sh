@@ -30,14 +30,24 @@ if [[ "$webgpu" != *-SNAPSHOT ]]; then
   exit 1
 fi
 
-repo=https://central.sonatype.com/repository/maven-snapshots/com/awakekt/awake/backend/webgpu-wasm-js/$webgpu
+base=https://central.sonatype.com/repository/maven-snapshots/com/awakekt/awake/backend
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
+
+# Pre-0.69 builds published a separate webgpu-wasm-js artifact; Kotlin 2.5 KOTLIN_ARCHIVE builds
+# (0.69+) publish wasmJs variants directly in the root webgpu .module file.
+artifact=webgpu-wasm-js
+repo=$base/$artifact/$webgpu
 
 # curl prints 000 when it gets no response at all.
 status=$(curl -sS --retry 3 -o "$work/maven-metadata.xml" -w '%{http_code}' "$repo/maven-metadata.xml" || true)
 if [[ "$status" == 404 ]]; then
-  echo "::error::WebGPU $webgpu has no published build ($repo/maven-metadata.xml returned 404)." >&2
+  artifact=webgpu
+  repo=$base/$artifact/$webgpu
+  status=$(curl -sS --retry 3 -o "$work/maven-metadata.xml" -w '%{http_code}' "$repo/maven-metadata.xml" || true)
+fi
+if [[ "$status" == 404 ]]; then
+  echo "::error::WebGPU $webgpu has no published build ($base/{webgpu-wasm-js,webgpu}/$webgpu/maven-metadata.xml returned 404)." >&2
   exit 3
 elif [[ "$status" != 200 ]]; then
   echo "::error::Could not reach Central for WebGPU $webgpu ($repo/maven-metadata.xml: status $status)." >&2
@@ -59,8 +69,8 @@ fi
 build=${value#"${webgpu%-SNAPSHOT}-"}
 
 # curl and jq have exit codes of their own, 3 among them, so their failures exit 1 explicitly.
-if ! curl -fsS --retry 3 -o "$work/module.json" "$repo/webgpu-wasm-js-$value.module"; then
-  echo "::error::Could not fetch $repo/webgpu-wasm-js-$value.module." >&2
+if ! curl -fsS --retry 3 -o "$work/module.json" "$repo/$artifact-$value.module"; then
+  echo "::error::Could not fetch $repo/$artifact-$value.module." >&2
   exit 1
 fi
 
@@ -77,7 +87,7 @@ edges=$(jq -r '
   | [.kind, "\(.group):\(.module)", (.version.strictly // ""), (.version.requires // ""), (.version.prefers // "")]
   | join("|")
 ' "$work/module.json" | tr -d '\r' | sort -u) || {
-  echo "::error::Could not read the Awake edges of webgpu-wasm-js $value." >&2
+  echo "::error::Could not read the Awake edges of $artifact $value." >&2
   exit 1
 }
 
@@ -110,7 +120,7 @@ while IFS='|' read -r kind coordinate strictly requires prefers; do
   done
 done <<< "$edges"
 
-echo "Checked webgpu-wasm-js $value: $dependencies Awake dependencies, $constraints Awake constraints." >&2
+echo "Checked $artifact $value: $dependencies Awake dependencies, $constraints Awake constraints." >&2
 if [[ ${#wrong[@]} -gt 0 ]]; then
   echo "::error::WebGPU $webgpu (build $build) is not a build of Core $core. It names:" >&2
   printf '  %s\n' "${wrong[@]}" >&2
