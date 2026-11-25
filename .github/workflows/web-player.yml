@@ -176,17 +176,17 @@ jobs:
           fi
 
       # Studio adds the user's project; the player ships without the sample. The distribution links
-      # the production executable, so the log reports any WebGPU call into Core code missing here.
-      - name: Build the web player
+      # the production executable, strips WASM debug sections + source maps, emits Cloudflare Pages
+      # security _headers, and verifies release hygiene via com.awakekt.release-guard.
+      - name: Build, harden and audit the web player
         run: |
           rm -rf app/shared/src/commonMain/resources/project
-          ./gradlew :app:webApp:wasmJsBrowserDistribution --no-configuration-cache
+          ./gradlew :app:webApp:hardenWebBundle :app:webApp:verifyReleaseGuard --no-configuration-cache
 
-      # Stored, not deflated: Studio's web build reads stored zips only. No source maps.
+      # Stored, not deflated: Studio's web build reads stored zips only. Already hardened and audited.
       - name: Package
         run: |
-          cd app/webApp/build/dist/wasmJs/productionExecutable
-          rm -f ./*.map
+          cd app/webApp/build/release-guard/web-hardened
           zip -q -0 -X -r "$GITHUB_WORKSPACE/web-player.zip" .
           ls -la "$GITHUB_WORKSPACE/web-player.zip"
 
