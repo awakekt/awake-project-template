@@ -183,18 +183,23 @@ jobs:
             exit 1
           fi
 
-      # Studio adds the user's project; the player ships without the sample. The distribution links
-      # the production executable, strips WASM debug sections + source maps, emits Cloudflare Pages
-      # security _headers, and verifies release hygiene via com.awakekt.release-guard.
+      # Studio adds the user's project; the player ships without the sample. Uses Release Guard
+      # hardening when configured in app/webApp/build.gradle.kts, else packages productionExecutable.
       - name: Build, harden and audit the web player
         run: |
           rm -rf app/shared/src/commonMain/resources/project
-          ./gradlew :app:webApp:hardenWebBundle :app:webApp:verifyReleaseGuard --no-configuration-cache
+          if grep -q 'hardenWebBundle' app/webApp/build.gradle.kts; then
+            ./gradlew :app:webApp:hardenWebBundle :app:webApp:verifyReleaseGuard --no-configuration-cache
+            echo "WEB_DIST_DIR=app/webApp/build/release-guard/web-hardened" >> "$GITHUB_ENV"
+          else
+            ./gradlew :app:webApp:wasmJsBrowserDistribution --no-configuration-cache
+            echo "WEB_DIST_DIR=app/webApp/build/dist/wasmJs/productionExecutable" >> "$GITHUB_ENV"
+          fi
 
-      # Stored, not deflated: Studio's web build reads stored zips only. Already hardened and audited.
+      # Stored, not deflated: Studio's web build reads stored zips only.
       - name: Package
         run: |
-          cd app/webApp/build/release-guard/web-hardened
+          cd "$WEB_DIST_DIR"
           zip -q -0 -X -r "$GITHUB_WORKSPACE/web-player.zip" .
           ls -la "$GITHUB_WORKSPACE/web-player.zip"
 
@@ -321,11 +326,11 @@ jobs:
           tag="player-$CORE"
           notes="Prebuilt players (web, Android APK, macOS arm64) for Awake Core $CORE, Vulkan $VULKAN and WebGPU $WEBGPU (build $WEBGPU_BUILD), built from $GITHUB_SHA. Awake Studio downloads them on export."
           assets=(dist/web-player.zip dist/android-player.apk dist/macos-arm64-player.zip)
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "${assets[@]}" --clobber
-            gh release edit "$tag" --notes "$notes"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --notes "$notes"
           else
-            gh release create "$tag" "${assets[@]}" --title "Players for Awake Core $CORE" --notes "$notes"
+            gh release create "$tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --title "Players for Awake Core $CORE" --notes "$notes"
           fi
 
   pages:
