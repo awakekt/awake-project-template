@@ -61,7 +61,6 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
-            implementation(libs.compose.uiTooling)
         }
         commonMain.dependencies {
             implementation(project(":core"))
