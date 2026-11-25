@@ -1,0 +1,1 @@
+Added prebuilt macOS (`macos-arm64-player.zip`) and Android (`android-player.apk`) player packaging to the `player-<core>` release workflow, plus external packed project loading (`-Dawake.project.dir` on desktop, `assets/project/` on Android) and `--smoke-test` verification for Awake Studio's finished app exports.

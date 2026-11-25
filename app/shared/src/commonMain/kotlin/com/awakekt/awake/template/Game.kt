@@ -29,22 +29,44 @@ val BundledProject = AssetSource { path -> runCatching { readResourceBytes("proj
 class GameData(val project: LoadedProject, val strings: Strings)
 
 /**
- * Reads the bundled project and its entry scene, and its string tables (`project/strings/<tag>.json`)
- * in the device's language, falling back to English when the project has no table for it.
+ * Reads the bundled project (or a packed external [source]) and its entry scene, and its string
+ * tables (`project/strings/<tag>.json`) in the device's language, falling back to English when the
+ * project has no table for it.
  */
-suspend fun loadGame(): GameData = GameData(
-    project = loadProject(BundledProject, physicsWorld = ::createJoltPhysicsWorld),
-    strings = Strings.load(StringTableSource.assets(BundledProject), locale = systemLocale()),
+suspend fun loadGame(source: AssetSource = BundledProject): GameData = GameData(
+    project = loadProject(source, physicsWorld = ::createJoltPhysicsWorld),
+    strings = Strings.load(StringTableSource.assets(source), locale = systemLocale()),
 )
+
+/**
+ * Resolves the window title: an explicit [overrideTitle] (from a prebuilt player launcher),
+ * a customized [GAME_TITLE], or the packed project's manifest name.
+ */
+fun resolveWindowTitle(game: GameData, overrideTitle: String? = null): String =
+    overrideTitle?.takeIf(String::isNotBlank)
+        ?: GAME_TITLE.takeUnless { it == DEFAULT_GAME_TITLE }
+        ?: projectTitleOf(game.project)?.takeIf(String::isNotBlank)
+        ?: GAME_TITLE
+
+/**
+ * Loads and ticks [game] headlessly for [frames] frames and returns a summary line for CI smoke
+ * tests that verify a prebuilt exported player starts and plays a packed fixture project.
+ */
+fun runGameSmokeTest(game: GameData, title: String, frames: Int = 10): String {
+    val summary = smokeTestProject(game.project, frames)
+    closeProject(game.project)
+    return "AWAKE_PLAYER_OK title=$title $summary"
+}
 
 /** Creates a fresh application lifecycle that plays [game]; [touchControls] shows its on-screen controls. */
 fun createGame(
     game: GameData,
     windowBackend: AppWindowBackend = AppWindowBackend.VULKAN,
     touchControls: Boolean = false,
+    windowTitle: String = GAME_TITLE,
 ): AwakeAppLifecycle = app {
     window {
-        title = GAME_TITLE
+        title = windowTitle
         size(1280, 720)
         backend.select(windowBackend)
     }
@@ -74,3 +96,5 @@ fun pointerCursorImageOf(game: AwakeAppLifecycle): () -> CursorImage? {
     val runtime = game.requireService<SceneAppLifecycleRuntime>()
     return { runtime.effectiveCursorImage }
 }
+
+private const val DEFAULT_GAME_TITLE = "Awake Project"
