@@ -1,13 +1,13 @@
 name: Web player release
 
-# Builds this template's web app with an empty project folder for an Awake Core version and
-# attaches it to the release `player-<core>` as web-player.zip. Awake Studio's "Export Web App"
-# downloads it and puts the user's project in `project/`.
+# Builds this template's prebuilt players without the sample project for an Awake Core version and
+# attaches them to the release `player-<core>`:
+# - web-player.zip (mirrored to GitHub Pages player/<core>/web-player.zip for browser CORS)
+# - android-player.apk (unsigned base release APK for Studio's Export Android APK)
+# - macos-arm64-player.zip (self-contained Apple Silicon .app player for Studio's Export Desktop App)
 #
-# Runs daily for the newest Core on Maven Central, building only if that version has no player yet,
-# and on demand for any version. Every run also mirrors all players to this repo's GitHub Pages
-# (player/<core>/web-player.zip): release downloads send no CORS headers, so Studio running in a
-# browser fetches the Pages copy.
+# Runs daily for the newest Core on Maven Central, building only if that version is missing any
+# player asset, and on demand for any version.
 #
 # The WebGPU backend is the <core>-SNAPSHOT of the same Core release: the build Core's tag run
 # publishes from the release once it publishes one, otherwise the last main build before the cut.
@@ -78,7 +78,14 @@ jobs:
           # with the same snapshot.
           if [[ "$core" == *-SNAPSHOT ]]; then webgpu=${IN_WEBGPU:-$core}; else webgpu=${IN_WEBGPU:-$core-SNAPSHOT}; fi
           build=true
-          if gh release view "player-$core" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [[ "$REBUILD" != true ]]; then build=false; fi
+          if [[ "$REBUILD" != true ]]; then
+            assets=$(gh release view "player-$core" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' 2>/dev/null || true)
+            if grep -qx 'web-player.zip' <<< "$assets" \
+              && grep -qx 'android-player.apk' <<< "$assets" \
+              && grep -qx 'macos-arm64-player.zip' <<< "$assets"; then
+              build=false
+            fi
+          fi
           strict=false
           webgpu_build=
           if [[ "$build" == true ]]; then
@@ -104,6 +111,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   build:
+    name: Build web player
     needs: resolve
     if: needs.resolve.outputs.build == 'true'
     runs-on: ubuntu-latest
@@ -190,6 +198,118 @@ jobs:
           zip -q -0 -X -r "$GITHUB_WORKSPACE/web-player.zip" .
           ls -la "$GITHUB_WORKSPACE/web-player.zip"
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-player
+          path: web-player.zip
+          retention-days: 1
+
+  build-android:
+    name: Build Android player
+    needs: resolve
+    if: needs.resolve.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Pin the Awake versions
+        env:
+          CORE: ${{ needs.resolve.outputs.core }}
+          VULKAN: ${{ needs.resolve.outputs.vulkan }}
+        run: |
+          catalog=gradle/libs.versions.toml
+          sed -i "s/^awake = \".*\"/awake = \"$CORE\"/; s/^awake-vulkan = \".*\"/awake-vulkan = \"$VULKAN\"/" "$catalog"
+          grep -E '^awake' "$catalog"
+
+      # Remove the sample project and adaptive icon XML so Android 8+ uses the density PNG icons
+      # Studio patches in-place; disable resource path shortening so mipmap paths stay canonical.
+      - name: Build Android player APK
+        run: |
+          rm -rf app/shared/src/commonMain/resources/project
+          rm -rf app/androidApp/src/main/res/mipmap-anydpi-v26
+          ./gradlew :app:androidApp:assembleRelease -Pandroid.enableResourceOptimizations=false --no-configuration-cache
+
+      - name: Package unsigned base APK
+        run: |
+          src="app/androidApp/build/outputs/apk/release/androidApp-release.apk"
+          test -f "$src"
+          cp "$src" "$GITHUB_WORKSPACE/android-player.apk"
+          # Strip debug signing entries so Studio signs cleanly with apksig.
+          zip -q -d "$GITHUB_WORKSPACE/android-player.apk" 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.DSA' 'META-INF/*.EC' 'META-INF/MANIFEST.MF' || true
+          unzip -l "$GITHUB_WORKSPACE/android-player.apk" | grep -q 'AndroidManifest.xml'
+          unzip -l "$GITHUB_WORKSPACE/android-player.apk" | grep -qE 'res/mipmap-xxxhdpi[^/]*/ic_launcher\.png'
+          ls -lh "$GITHUB_WORKSPACE/android-player.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-player
+          path: android-player.apk
+          retention-days: 1
+
+  build-macos:
+    name: Build macOS (Apple silicon) player
+    needs: resolve
+    if: needs.resolve.outputs.build == 'true'
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Pin the Awake versions
+        env:
+          CORE: ${{ needs.resolve.outputs.core }}
+          VULKAN: ${{ needs.resolve.outputs.vulkan }}
+        run: |
+          catalog=gradle/libs.versions.toml
+          sed -i '' "s/^awake = \".*\"/awake = \"$CORE\"/; s/^awake-vulkan = \".*\"/awake-vulkan = \"$VULKAN\"/" "$catalog"
+          grep -E '^awake' "$catalog"
+
+      - name: Install Vulkan loader, MoltenVK and GLFW
+        run: brew install vulkan-loader molten-vk glfw
+
+      - name: Package macOS player
+        run: bash scripts/package-macos-player.sh "$GITHUB_WORKSPACE/macos-arm64-player.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-player
+          path: macos-arm64-player.zip
+          retention-days: 1
+
+  publish:
+    name: Publish player release
+    needs: [resolve, build, build-android, build-macos]
+    if: needs.resolve.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-player
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-player
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-arm64-player
+          path: dist
+
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -199,18 +319,18 @@ jobs:
           WEBGPU_BUILD: ${{ needs.resolve.outputs.webgpu_build }}
         run: |
           tag="player-$CORE"
-          notes="Web player for Awake Core $CORE, Vulkan $VULKAN and WebGPU $WEBGPU (build $WEBGPU_BUILD), built from $GITHUB_SHA. Awake Studio's Export Web App downloads it."
-          # A rebuild replaces the zip, so its notes name the builds it now carries.
+          notes="Prebuilt players (web, Android APK, macOS arm64) for Awake Core $CORE, Vulkan $VULKAN and WebGPU $WEBGPU (build $WEBGPU_BUILD), built from $GITHUB_SHA. Awake Studio downloads them on export."
+          assets=(dist/web-player.zip dist/android-player.apk dist/macos-arm64-player.zip)
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" web-player.zip --clobber
+            gh release upload "$tag" "${assets[@]}" --clobber
             gh release edit "$tag" --notes "$notes"
           else
-            gh release create "$tag" web-player.zip --title "Web player for Awake Core $CORE" --notes "$notes"
+            gh release create "$tag" "${assets[@]}" --title "Players for Awake Core $CORE" --notes "$notes"
           fi
 
   pages:
-    needs: [resolve, build]
-    if: always() && needs.resolve.result == 'success' && needs.build.result != 'failure'
+    needs: [resolve, publish]
+    if: always() && needs.resolve.result == 'success' && needs.publish.result != 'failure'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

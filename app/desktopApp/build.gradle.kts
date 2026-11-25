@@ -58,6 +58,22 @@ compose.desktop {
     }
 }
 
+// Stages the desktop runtime jars so scripts/package-macos-player.sh can build a prebuilt .app bundle.
+// Jars are prefixed with their group because different Core modules publish the same file name (e.g. canvas-desktop).
+tasks.register<Sync>("desktopPackageInput") {
+    dependsOn(tasks.named("jar"))
+    val runtimeArtifacts = configurations.named("runtimeClasspath")
+        .flatMap { it.incoming.artifacts.resolvedArtifacts }
+    from(tasks.named("jar"))
+    from(runtimeArtifacts.map { artifacts -> artifacts.map { it.file } }) {
+        eachFile {
+            val source = file
+            val id = runtimeArtifacts.get().first { it.file == source }.id.componentIdentifier
+            if (id is ModuleComponentIdentifier) name = "${id.group}-$name"
+        }
+    }
+    into(layout.buildDirectory.dir("desktop-package/lib"))
+}
 // macOS has no system Vulkan: `run` points the loader at Homebrew's MoltenVK
 // (`brew install molten-vk vulkan-loader`). Other systems find their driver without help.
 tasks.withType<JavaExec>().configureEach {

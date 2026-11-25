@@ -19,3 +19,9 @@ internal suspend fun loadProject(
 internal fun SceneAppDsl.runProject(project: LoadedProject, touchControls: Boolean) {
     playProject(project, touchControls)
 }
+
+internal fun projectTitleOf(project: LoadedProject): String? = null
+
+internal fun smokeTestProject(project: LoadedProject, frames: Int): String = "legacy=true frames=$frames"
+
+internal fun closeProject(project: LoadedProject) = Unit
