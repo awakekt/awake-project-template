@@ -1,12 +1,10 @@
-import com.awakekt.releaseguard.gradle.CollectLibraryKeepRulesTask
-import com.awakekt.releaseguard.gradle.GenerateReleaseGuardRulesTask
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     alias(libs.plugins.kotlinJvm)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.awakeReleaseGuard)
 }
 
 dependencies {
@@ -22,52 +20,18 @@ dependencies {
 }
 
 // Libraries ship their keep rules in META-INF/proguard, where Android's R8 finds them. Compose's
-// ProGuard doesn't look there, so Release Guard collects them alongside curated desktop rules.
-val collectLibraryKeepRules = tasks.named<CollectLibraryKeepRulesTask>("collectLibraryKeepRules")
-val generateReleaseGuardRules = tasks.named<GenerateReleaseGuardRulesTask>("generateReleaseGuardRules")
-val desktopProguardDir = layout.buildDirectory.dir("compose/tmp/main-release/proguard")
-
-// Compose ProGuard outputs both the app's own JARs and every third-party library JAR into one
-// folder. Stage the app's own obfuscated JARs separately so readability audits measure game code
-// rather than kept JNI/AWT library classes while bytecode verification links the full classpath.
-val stageDesktopOwnObfuscatedJars = tasks.register<Sync>("stageDesktopOwnObfuscatedJars") {
-    dependsOn("proguardReleaseJars")
-    from(desktopProguardDir) {
-        include("desktopApp*.jar", "shared-jvm*.jar", "core-jvm*.jar")
+// ProGuard doesn't look there, so this collects them for it: Awake's keep what its native code finds
+// by name.
+val libraryKeepRules = tasks.register<Sync>("libraryKeepRules") {
+    val libraries = configurations.runtimeClasspath.get().incoming
+        .artifactView { componentFilter { it is ModuleComponentIdentifier } }
+        .files
+    from(libraries.elements.map { jars -> jars.filter { it.asFile.name.endsWith(".jar") }.map { zipTree(it.asFile) } }) {
+        include("META-INF/proguard/*.pro")
     }
-    into(layout.buildDirectory.dir("release-guard/desktop-own-jars"))
-}
-
-releaseGuard {
-    projectPackages.add("com.awakekt.awake.template")
-    minScore.set(80)
-    failOnSeverity.set("HIGH")
-
-    rules {
-        mainClass.set("com.awakekt.awake.template.MainKt")
-        desktopDontOptimize.set(true)
-        stripKotlinMetadata.set(false)
-    }
-
-    desktop {
-        enabled.set(true)
-        collectLibraryKeepRules.set(true)
-        gameJarsDir.set(layout.buildDirectory.dir("release-guard/desktop-own-jars"))
-        librariesDir.set(desktopProguardDir)
-        // The starter template has only ~14 obfuscated symbols total, so keeping MainKt alone is
-        // ~0.071 readability; tighten this back to 0.02 as your game grows.
-        maxReadability.set(0.10)
-        verifyBytecode.set(true)
-        forbidOriginalSourceFileAttribute.set(true)
-        forbidDebugTablesAndKotlinMetadata.set(false)
-        inspectNativeLibraries.set(false)
-        forbidJpackageDebugFlags.set(true)
-    }
-
-    supplyChain {
-        enabled.set(true)
-        forbidSnapshotDependencies.set(true)
-    }
+    into(layout.buildDirectory.dir("library-keep-rules"))
+    eachFile { path = name }
+    includeEmptyDirs = false
 }
 
 compose.desktop {
@@ -83,24 +47,15 @@ compose.desktop {
         }
 
         // The release (`runRelease`, `packageRelease…`) is shrunk and obfuscated by ProGuard, with
-        // the rules every library ships for it, Release Guard's curated rules, and your own in
-        // proguard-rules.pro.
+        // the rules every library ships for it and your own in proguard-rules.pro.
         buildTypes.release.proguard {
             obfuscate.set(true)
             // Compose's default, ProGuard 7.7.0, drops classes from a Kotlin sealed interface's
             // permitted subclasses, and the release then fails to load them. 7.10.0 keeps them all.
             version.set("7.10.0")
-            configurationFiles.from(
-                project.file("proguard-rules.pro"),
-                generateReleaseGuardRules.flatMap { it.desktopRulesFile },
-                collectLibraryKeepRules.map { it.outputDir.asFileTree },
-            )
+            configurationFiles.from(project.file("proguard-rules.pro"), files(libraryKeepRules).asFileTree)
         }
     }
-}
-
-tasks.named("verifyReleaseGuard") {
-    dependsOn(stageDesktopOwnObfuscatedJars)
 }
 
 // macOS has no system Vulkan: `run` points the loader at Homebrew's MoltenVK

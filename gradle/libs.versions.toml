@@ -22,14 +22,12 @@ material3 = "1.11.0-alpha07"
 # Core modules and Vulkan backend use independent version trains. Gradle lines them up on its own:
 # every Core module depends on com.awakekt.awake:bom, so the newest Core in the build lifts all of
 # them, a Vulkan release's included. To state the version, implementation(platform("com.awakekt.awake:bom:<awake>")).
-awake = "0.74.0"
+awake = "0.76.0"
 awake-vulkan = "0.1.67"
 # WebGPU is published only as snapshots. Pin "<awake>-SNAPSHOT": the WebGPU snapshot of the release
 # above (from Core's tag run once it publishes one, otherwise the last main build before the cut);
 # never the next patch.
-awake-webgpu = "0.74.0-SNAPSHOT"
-# KMP release hardening, binary verification, and weighted scorecards (awakekt/release-guard).
-awake-release-guard = "0.2.1"
+awake-webgpu = "0.76.0-SNAPSHOT"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -77,4 +75,3 @@ composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "k
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
-awakeReleaseGuard = { id = "com.awakekt.release-guard", version.ref = "awake-release-guard" }

@@ -64,15 +64,7 @@ Android, ProGuard on desktop, and an optimized, minified build on the web.
 ```bash
 ./gradlew :app:desktopApp:packageReleaseDistributionForCurrentOS   # desktop installer
 ./gradlew :app:androidApp:assembleRelease                          # Android APK
-./gradlew :app:webApp:hardenWebBundle                              # hardened web bundle + Cloudflare Pages _headers
-```
-
-Verify release hygiene, obfuscation, and binary hardening with [Release Guard](https://github.com/awakekt/release-guard) before publishing:
-
-```bash
-./gradlew :app:desktopApp:verifyReleaseGuard                       # desktop ProGuard + bytecode + supply-chain audit
-./gradlew :app:androidApp:verifyReleaseGuard                       # Android R8, 16 KB ELF, manifest, and signing audit
-./gradlew :app:webApp:verifyReleaseGuard                           # web WASM debug-strip, source-map, and CSP audit
+./gradlew :app:webApp:wasmJsBrowserDistribution                    # web
 ```
 
 - **Keep rules:** Awake's libraries bring the rules for what their native code finds by name. If

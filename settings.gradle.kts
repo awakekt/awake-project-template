@@ -36,13 +36,6 @@ pluginManagement {
         // An Awake Core release Maven Central refused under its publishing limits, served by Core at
         // Central's coordinates.
         maven("https://awakekt.github.io/awake/") { mavenContent { includeGroupAndSubgroups("com.awakekt.awake") } }
-        // Zero-token public mirror for com.awakekt.release-guard.
-        maven("https://awakekt.github.io/release-guard/") {
-            content {
-                includeGroup("com.awakekt.releaseguard")
-                includeGroup("com.awakekt.release-guard")
-            }
-        }
         mavenLocal { content { includeGroupAndSubgroups("com.awakekt.awake") } }
         gradlePluginPortal()
     }
@@ -70,13 +63,6 @@ dependencyResolutionManagement {
         // An Awake Core release Maven Central refused under its publishing limits, served by Core at
         // Central's coordinates.
         maven("https://awakekt.github.io/awake/") { mavenContent { includeGroupAndSubgroups("com.awakekt.awake") } }
-        // Zero-token public mirror for com.awakekt.release-guard.
-        maven("https://awakekt.github.io/release-guard/") {
-            content {
-                includeGroup("com.awakekt.releaseguard")
-                includeGroup("com.awakekt.release-guard")
-            }
-        }
         mavenLocal { content { includeGroupAndSubgroups("com.awakekt.awake") } }
         // The wgpu4k builds the WebGPU backend pins, copied byte for byte by Awake Core, for when
         // Central's 90-day snapshot cleanup removes them.
