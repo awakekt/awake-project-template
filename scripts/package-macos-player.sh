@@ -92,7 +92,7 @@ jpackage \
 
 app="$dist/$name.app"
 plist="$app/Contents/Info.plist"
-plutil -replace LSMinimumSystemVersion -string "14.0" "$plist"
+plutil -replace LSMinimumSystemVersion -string "15.0" "$plist"
 
 mkdir -p "$app/Contents/Frameworks"
 mv "$app/Contents/app/natives/libvulkan.1.dylib" "$app/Contents/Frameworks/"

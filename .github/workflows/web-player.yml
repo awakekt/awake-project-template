@@ -258,7 +258,7 @@ jobs:
     name: Build macOS (Apple silicon) player
     needs: resolve
     if: needs.resolve.outputs.build == 'true'
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -330,7 +330,7 @@ jobs:
 
   pages:
     needs: [resolve, publish]
-    if: always() && needs.resolve.result == 'success' && needs.publish.result != 'failure'
+    if: always() && github.ref == 'refs/heads/main' && needs.resolve.result == 'success' && needs.publish.result != 'failure'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
