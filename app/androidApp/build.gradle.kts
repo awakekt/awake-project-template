@@ -43,12 +43,6 @@ android {
             // code finds by name; add your own to proguard-rules.pro.
             isMinifyEnabled = true
             isShrinkResources = true
-            // libawake-vulkan ships for arm64-v8a and x86_64; filtering ABIs shrinks the prebuilt
-            // android-player.apk (~223 MB -> ~48 MB) and excludes 4 KB-aligned third-party .so
-            // binaries that fail Android 15+ 16 KB page-size checks.
-            ndk {
-                abiFilters += listOf("arm64-v8a", "x86_64")
-            }
             // Signed with the debug key so the release installs as it is, as CI installs it.
             // Sign it with your own key before you publish.
             signingConfig = signingConfigs.getByName("debug")
